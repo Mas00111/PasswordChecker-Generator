@@ -5,11 +5,10 @@ import requests
 import random
 import string
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
+import time
 
-# ---------------------------
-# PASSWORD GENERATOR
-# ---------------------------
+
 def generate_password(length=16):
     if length < 8:
         length = 8
@@ -34,9 +33,7 @@ def generate_password(length=16):
     return "".join(password)
 
 
-# ---------------------------
-# ENTROPY
-# ---------------------------
+
 def entropy(password):
     size = 0
 
@@ -55,9 +52,7 @@ def entropy(password):
     return round(len(password) * math.log2(size), 2)
 
 
-# ---------------------------
-# BREACH CHECK
-# ---------------------------
+
 def check_breach(password):
     sha1 = hashlib.sha1(password.encode()).hexdigest().upper()
     prefix = sha1[:5]
@@ -67,6 +62,7 @@ def check_breach(password):
 
     try:
         r = requests.get(url)
+
         if r.status_code != 200:
             return "Breach check failed."
 
@@ -81,10 +77,8 @@ def check_breach(password):
         return "Error checking breach database"
 
 
-# ---------------------------
-# STRENGTH CHECK
-# ---------------------------
-def strength(password):
+
+def strength_score(password):
     score = 0
 
     if len(password) >= 12:
@@ -101,6 +95,11 @@ def strength(password):
     if re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
         score += 1
 
+    return min(score, 6)
+
+
+
+def strength_label(score):
     if score <= 2:
         return "WEAK"
     elif score <= 4:
@@ -111,9 +110,26 @@ def strength(password):
         return "VERY STRONG"
 
 
-# ---------------------------
-# ANALYZE PASSWORD
-# ---------------------------
+
+def animate_meter(target):
+    progress["value"] = 0
+    root.update()
+
+    for i in range(target + 1):
+        progress["value"] = i
+        root.update()
+        time.sleep(0.15)
+
+   
+    if target <= 2:
+        progress.configure(style="Red.Horizontal.TProgressbar")
+    elif target <= 4:
+        progress.configure(style="Yellow.Horizontal.TProgressbar")
+    else:
+        progress.configure(style="Green.Horizontal.TProgressbar")
+
+
+
 def analyze():
     pwd = entry.get()
 
@@ -122,34 +138,33 @@ def analyze():
         return
 
     ent = entropy(pwd)
-    st = strength(pwd)
     breach = check_breach(pwd)
 
+    score = strength_score(pwd)
+    label = strength_label(score)
+
+    animate_meter(score)
+
     output_text.set(
-        f"Strength: {st}\n"
+        f"Strength: {label}\n"
         f"Entropy: {ent} bits\n"
         f"Breach: {breach}"
     )
 
 
-# ---------------------------
-# GENERATE PASSWORD (FIXED)
-# ---------------------------
+
 def gen_password():
     pwd = generate_password(16)
 
-    # IMPORTANT FIX:
     entry.delete(0, tk.END)
-    entry.config(show="")   # temporarily unmask so user can see generated password
+    entry.config(show="")  # show generated password
     entry.insert(0, pwd)
 
 
-# ---------------------------
-# UI SETUP
-# ---------------------------
+
 root = tk.Tk()
 root.title("Cyber Password Analyzer")
-root.geometry("500x400")
+root.geometry("520x420")
 root.configure(bg="black")
 
 title = tk.Label(
@@ -161,7 +176,6 @@ title = tk.Label(
 )
 title.pack(pady=10)
 
-# Password entry (masked only for manual typing)
 entry = tk.Entry(
     root,
     width=40,
@@ -172,12 +186,29 @@ entry = tk.Entry(
 )
 entry.pack(pady=10)
 
+
+style = ttk.Style()
+style.theme_use("default")
+
+style.configure("Red.Horizontal.TProgressbar", background="red")
+style.configure("Yellow.Horizontal.TProgressbar", background="yellow")
+style.configure("Green.Horizontal.TProgressbar", background="green")
+
+progress = ttk.Progressbar(
+    root,
+    length=220,
+    mode="determinate",
+    maximum=6
+)
+progress.pack(pady=10)
+
+
 btn_frame = tk.Frame(root, bg="black")
 btn_frame.pack(pady=10)
 
 analyze_btn = tk.Button(
     btn_frame,
-    text="ANALYZE PASSWORD",
+    text="ANALYZE",
     command=analyze,
     bg="green",
     fg="black",
@@ -187,7 +218,7 @@ analyze_btn.grid(row=0, column=0, padx=5)
 
 gen_btn = tk.Button(
     btn_frame,
-    text="GENERATE PASSWORD",
+    text="GENERATE",
     command=gen_password,
     bg="green",
     fg="black",
